@@ -19,7 +19,8 @@ $installed = $null -ne (Get-ItemProperty HKLM:\Software\Microsoft\Windows\Curren
 If(-Not $installed) {
 	Write-Host "'$software' is NOT installed.
 Will install now";
-Start-Process -FilePath "C:\Temp\PCMark10-v2-1-2535-professional\pcmark10-setup.exe" -Wait -ArgumentList "/c, /force, /silent"
+$pcmarkpath = (Get-ChildItem \\it\Operations\GLOPAS\Install\Automation\InstallFiles -Directory).FullName
+Start-Process -FilePath $pcmarkpath\pcmark10-setup.exe -Wait -ArgumentList "/c, /force, /silent"
 
 } else {
 	Write-Host "'$software' is installed."}
@@ -80,7 +81,7 @@ foreach ($item in $files) {
 
 waitforfiles -ext "xml" -loop $loop
 
-Copy-Item -Path "c:\TempMark\$model\PCMark10\$defname\*" -Destination "C:\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$defname" -Recurse
+Copy-Item -Path "c:\TempMark\$model\PCMark10\$defname\*" -Destination "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$defname" -Recurse
 }
 function getinfo {
 $script:Server = hostname.exe 
@@ -102,7 +103,7 @@ If ($deffile -eq "pcm10_storage_full_default.pcmdef") {$whatbenchmark = "Storage
 
 # Get all files from \\it\Operations\GLOPAS\Public\BenchmarkingScores\$model
 # Probably make some logic in regards to what $deffile to use 
-$xmlfiles = Get-ChildItem -Path "C:\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse
+$xmlfiles = Get-ChildItem -Path "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse
 
 # Load the first xml file in
 [xml]$XmlDocument2 = Get-Content $xmlfiles[0].FullName
@@ -169,6 +170,6 @@ getinfo
 
 whatpcmark10
 
-#startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
+startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
 
 update_scores -deffile $deffile -model $model
