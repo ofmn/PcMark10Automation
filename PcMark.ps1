@@ -84,6 +84,9 @@ foreach ($item in $files) {
 
 waitforfiles -ext "xml" -loop $loop
 
+#Calls function to retrieve scores just made in this run - and will also be run in the end to fetch scores already existing
+update_scores -deffile $deffile -model $model -beforeorafter ThisRun
+
 Copy-Item -Path "c:\TempMark\$model\PCMark10\$defname\*" -Destination "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$defname" -Recurse
 }
 function getinfo {
@@ -175,8 +178,6 @@ getinfo
 whatpcmark10
 
 startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
-
-update_scores -deffile $deffile -model $model -beforeorafter ThisRun
 
 update_scores -deffile $deffile -model $model -beforeorafter OtherRuns
 
