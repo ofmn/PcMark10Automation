@@ -48,7 +48,7 @@ function whatpcmark10 {
 
     [int]$answer1 = $answer -1
     $script:deffile = $hashpcmark10.Get_Item($answer1)
-    $defname = $hashpcmark10.GetEnumerator() | Where-Object Name -match $answer | ForEach-Object Key
+    $script:defname = $hashpcmark10.GetEnumerator() | Where-Object Name -match $answer | ForEach-Object Key
     $script:defname = $defname -replace '\d\s-\s',''
 
     do
@@ -98,7 +98,7 @@ If ($model -eq "System Version") {$script:model = "ThinkPad T14 Gen 2i"}
 # In this function; implement what $deffile to use - and change the path to where this can be found - also based on the model
 # $deffile = express | $model = P53 | Look for xml files matching express in P53 public folder
 function update_scores {
-    param($deffile, $model)
+    param($deffile, $model, $beforeorafter)
 If ($deffile -eq "pcm10_benchmark.pcmdef") {$script:whatbenchmark = "Normal"}
 If ($deffile -eq "pcm10_applications.pcmdef") {$whatbenchmark = "OfficeApps"}
 If ($deffile -eq "pcm10_applications_batterylife.pcmdef") {$whatbenchmark = "BatteryLifeOffice"}
@@ -106,7 +106,8 @@ If ($deffile -eq "pcm10_storage_full_default.pcmdef") {$whatbenchmark = "Storage
 
 # Get all files from \\it\Operations\GLOPAS\Public\BenchmarkingScores\$model
 # Probably make some logic in regards to what $deffile to use 
-$xmlfiles = Get-ChildItem -Path "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse
+If ($beforeorafter -eq "OtherRuns") {$xmlfiles = Get-ChildItem -Path "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse}
+If ($beforeorafter -eq "ThisRun") {$xmlfiles = Get-ChildItem -Path "C:\TempMark\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse}
 
 # Load the first xml file in
 [xml]$XmlDocument2 = Get-Content $xmlfiles[0].FullName
@@ -163,8 +164,8 @@ foreach ($key in $($hashtable.Keys)) {
         }
     }
 }
-
-$script:hashtable
+If ($beforeorafter -eq "ThisRun") {$script:thisrun = $hashtable}
+If ($beforeorafter -eq "OtherRuns") {$script:otherruns = $hashtable}
 }
 
 #endregion
@@ -175,6 +176,43 @@ whatpcmark10
 
 startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
 
-update_scores -deffile $deffile -model $model
+update_scores -deffile $deffile -model $model -beforeorafter ThisRun
+
+update_scores -deffile $deffile -model $model -beforeorafter OtherRuns
+
+
+#Create Table object
+$Result = New-Object system.Data.DataTable “TestTable”
+
+#Define Columns
+$BName = New-Object system.Data.DataColumn BenchMark,([string])
+$Thisruncolumn = New-Object system.Data.DataColumn ThisRun,([string])
+$OtherRunscolumn = New-Object system.Data.DataColumn OtherRuns,([string])
+$Difference = New-Object system.Data.DataColumn Difference,([string])
+
+#Add the Columns
+$Result.columns.add($BName)
+$Result.columns.add($Thisruncolumn)
+$Result.columns.add($OtherRunscolumn)
+$Result.columns.add($Difference)
+
+foreach ($item in $thisrun.Keys) {
+    #Create a row
+    $row = $Result.NewRow()
+    $thisrunscore = $thisrun.Get_Item($item)
+    $otherrunsscore = $otherruns.Get_Item($item)
+    $differencescore = $thisrunscore - $otherrunsscore
+    #Add to row
+    $row.BenchMark = "$item"
+    $row.ThisRun = $thisrunscore
+    $row.OtherRuns = $otherrunsscore
+    $row.Difference = $differencescore
+    
+
+    #Add row to table
+    $Result.Rows.Add($row)
+}
+
+$Result
 
 \\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogViewer\GenericLogViewer.exe "\\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogFiles\$Server-$time.csv"
