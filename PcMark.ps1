@@ -69,11 +69,14 @@ function waitforfiles {
 }
 function startpcmark10 {
 param($Server, $model,$deffile,$defname,[int]$loop, $gettime)
-
+& \\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\HWiNFO64.EXE "-l\\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogFiles\$Server-$gettime.csv"
+Start-Sleep -s 5
 Set-Location "C:\Program Files\UL\PCMark 10"
 .\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --out="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result"
 
 waitforfiles -ext "pcmark10-result" -loop $loop
+Start-Sleep -Seconds 5
+Stop-Process -Name HWiNFO64
 
 foreach ($item in $files) {
 & 'C:\Program Files\UL\PCMark 10\PCMark10Cmd.exe' --in="$item" --export-xml "$item.xml"
@@ -85,7 +88,7 @@ Copy-Item -Path "c:\TempMark\$model\PCMark10\$defname\*" -Destination "\\it\Oper
 }
 function getinfo {
 $script:Server = hostname.exe 
-$script:time = Get-Date -Format dd-MM-yy.HH-mm-ss -ErrorAction SilentlyContinue
+$script:time = Get-Date -Format "dd-MM-yy.HH;mm" -ErrorAction SilentlyContinue
 $script:model = (Get-Wmiobject -class Win32_ComputerSystemProduct).Version
 If ($model -eq "System Version") {$script:model = "ThinkPad T14 Gen 2i"}
 
@@ -173,3 +176,5 @@ whatpcmark10
 startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
 
 update_scores -deffile $deffile -model $model
+
+\\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogViewer\GenericLogViewer.exe "\\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogFiles\$Server-$time.csv"
