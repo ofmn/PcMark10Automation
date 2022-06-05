@@ -75,7 +75,7 @@ function startpcmark10 {
     Start-Sleep -s 5
     Set-Location "C:\Program Files\UL\PCMark 10"
 #    .\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --out="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result"
-.\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --out="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result.xml"
+.\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --export-xml="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result.xml"
 
     waitforfiles -ext "pcmark10-result.xml" -loop $loop
     Start-Sleep -Seconds 5
@@ -194,7 +194,7 @@ $Result = New-Object system.Data.DataTable “TestTable”
 #Define Columns
 $BName = New-Object system.Data.DataColumn BenchMark, ([string])
 $Thisruncolumn = New-Object system.Data.DataColumn ThisRun, ([string])
-$OtherRunscolumn = New-Object system.Data.DataColumn OtherRuns, ([string])
+$OtherRunscolumn = New-Object system.Data.DataColumn AllRuns, ([string])
 $Difference = New-Object system.Data.DataColumn Difference, ([string])
 
 #Add the Columns
