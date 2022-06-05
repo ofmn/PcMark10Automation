@@ -31,6 +31,9 @@ else {
 #endregion
 
 #region functions
+
+# Function to ask the console what benchmark to run.
+# Also setting $deffile and $defname here - which are used to identify what benchmark we are running, where to put the files, and how to collect the scores in other functions.
 function whatpcmark10 {
     $hashpcmark10 = [Ordered]@{
         "1 - Normal"              = "pcm10_benchmark.pcmdef"
@@ -62,6 +65,7 @@ function whatpcmark10 {
     New-Item -Path "C:\" -Name "TempMark\$model\PCMark10\$defname" -ItemType "directory" | Out-Null
 
 }
+# Function to make sure we are waiting for the benchmark files/XML's to exist before moving on with the script (Also matching the amount of loops we specified)
 function waitforfiles {
     param($ext, $loop)
     do {
@@ -74,19 +78,13 @@ function startpcmark10 {
     & \\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\HWiNFO64.EXE "-l\\it\Operations\GLOPAS\Install\Scripts\SoftwareServices\HWINFO64\LogFiles\$Server-$gettime.csv"
     Start-Sleep -s 5
     Set-Location "C:\Program Files\UL\PCMark 10"
-#    .\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --out="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result"
-.\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --export-xml="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result.xml"
+
+    .\PCMark10Cmd.exe --register=PCM10-TPRO-20220824-2ZQQ6-PJD67-RHKU9-DW6JP --loop $loop --systeminfo=off --log="C:\Temp\pcmark10-$gettime.log" --definition=$deffile --export-xml="C:\TempMark\$model\PCMark10\$defname\$Server-$gettime-$defname.pcmark10-result.xml"
 
     waitforfiles -ext "pcmark10-result.xml" -loop $loop
     Start-Sleep -Seconds 5
     Stop-Process -Name HWiNFO64
-<#
-    foreach ($item in $files) {
-        & 'C:\Program Files\UL\PCMark 10\PCMark10Cmd.exe' --in="$item" --export-xml "$item.xml"
-    }
 
-    waitforfiles -ext "xml" -loop $loop
-#>
     #Calls function to retrieve scores just made in this run - and will also be run in the end to fetch scores already existing
     update_scores -deffile $deffile -model $model -beforeorafter ThisRun
 
@@ -101,8 +99,6 @@ function getinfo {
 }
 # New and improved update scores that dynamically work with what deffile is chosen - auto loops through provided path for XML's to create hashtable with scores we want to collect and then pass to SQL
 # This code alone saved more than 430 lines of very bad code from previous version
-# In this function; implement what $deffile to use - and change the path to where this can be found - also based on the model
-# $deffile = express | $model = P53 | Look for xml files matching express in P53 public folder
 function update_scores {
     param($deffile, $model, $beforeorafter)
     If ($deffile -eq "pcm10_benchmark.pcmdef") { $script:whatbenchmark = "Normal" }
@@ -112,33 +108,39 @@ function update_scores {
     If ($deffile -eq "pcm10_express.pcmdef") { $whatbenchmark = "Express" }
 
     # Get all files from \\it\Operations\GLOPAS\Public\BenchmarkingScores\$model
-    # Probably make some logic in regards to what $deffile to use 
     If ($beforeorafter -eq "OtherRuns") { $xmlfiles = Get-ChildItem -Path "\\it\Operations\GLOPAS\Public\BenchmarkingScores\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse }
     If ($beforeorafter -eq "ThisRun") { $xmlfiles = Get-ChildItem -Path "C:\TempMark\$model\PCMark10\$whatbenchmark" -Filter *.xml -Recurse }
 
-    # Load the first xml file in
+    # If statement to skip this if count of XML's is 0 (Like for a brand new model)
     If ($xmlfiles.Count -ne 0) {
         [xml]$XmlDocument2 = Get-Content $xmlfiles[0].FullName
 
-        # The XML files is diveded into two different "result" 
+        # The XML files containing scores is in two parts, for all the different benchmarks.
+        # Unfortunetaly depending on what benchmark is chosen we need to collect the scores from different parts (Either 1 or second)
         # Below two lines get the different score name from each and put it into an array
-        # The first contains the overall score names, like "Pcmark10 overall", "Essentials", "Productivity"¨
-        # The second contains all the score names that are either under essentials, productivity or digital content
-        # Like, Browsing, VideoConf, Writing, App startup etc etc
+        # For "Normal, Express, OfficeApps" we have to use the second part when we collect scores, or else we do not retrieve the more specific scores like Word, Excel, VideoConf etc
+        # For Battery, and Storage we need to use the first part.
+        # This is why we point to either 0/1 in below lines
+
+        # Load the first xml file based on what benchmark is chosen - and use a random xml to dynamically create the scores we want to collect.
+        # Below 3 If statements is specifically only to collect the NAMES of the scores
+        # Then we set what $partInXML we want to collect the actual scores for later down the script.
         If ($whatbenchmark -eq "BatteryLifeOffice") {
             $selectscore = "*PCMark10BatterylifeApplicationsRuntime*"
-            $script:getscorenames0 = $XmlDocument2.benchmark.results.result[0] | Select-Object $selectscore   
+            $script:getscorenames0 = $XmlDocument2.benchmark.results.result[0] | Select-Object $selectscore
+            $partInXML = 0   
         }
 
         If ($whatbenchmark -eq "Normal" -or $whatbenchmark -eq "OfficeApps" -or $whatbenchmark -eq "Express") {
             $selectscore = "*score" 
-            $script:getscorenames0 = $XmlDocument2.benchmark.results.result[0] | Select-Object $selectscore 
+            $script:getscorenames0 = $XmlDocument2.benchmark.results.result[1] | Select-Object $selectscore
+            $partInXML = 1 
         }
 
         If ($whatbenchmark -like "Storage Performance") {
             $selectscore = "*Score", "Pcm10StorageFullAverageAccessTimeOverall", "Pcm10StorageFullBandwidthOverall"  
             $script:getscorenames0 = $XmlDocument2.benchmark.results.result[0] | Select-Object $selectscore
-    
+            $partInXML = 0
         }
 
         # Create empty hashtable
@@ -152,18 +154,21 @@ function update_scores {
 
         # Creating the actually array to put all the number scores into
         $global:scorearray0 = @()
+        # Foreach to loop through all xml files found
         foreach ($entry in $xmlfiles) {
+            # Set full path to each of the xml files
             $path1 = $entry.Fullname
-    
+            # Get content of XML 
             [xml]$script:XmlDocument3 = Get-Content $path1
-
-            $script:scorearray0 += $XmlDocument3.benchmark.results.result[0] | Select-Object $selectscore
+            # Select-Object filter from above to only chose scores that matches the regex
+            $script:scorearray0 += $XmlDocument3.benchmark.results.result[$partInXML] | Select-Object $selectscore
     
         }
 
         # Foreach $key in hashtable, collect all scores from the scorearray and average them, and round to 0 decimal - put into $hashtable $key, which are also variables
+        # $key below meaning the different scores we are collecting, VideoConf, Writing, Spreadsheets etc
         foreach ($key in $($hashtable.Keys)) {
-            If ($key -match "PCMark10.*|EssentialsScore|ProductivityScore|DigitalContentCreationScore|Pcm10StorageFull.*") {
+            If ($key -match ".*score|PCMark10.*|EssentialsScore|ProductivityScore|DigitalContentCreationScore|Pcm10StorageFull.*") {
 
                 # Special case for BatteryLife as it needs to be converted from seconds to minutes (divide by 60)
                 If ($key -eq "PCMark10BatteryLifeApplicationsRunTime") { $hashtable[$key] = [math]::Round(($scorearray0.PCMark10BatteryLifeApplicationsRunTime / 60 | Measure-Object -Average).Average) }
@@ -183,8 +188,14 @@ getinfo
 
 whatpcmark10
 
+## Import Maximum performance powerplan and set it active
+powercfg /import "\\it\Operations\GLOPAS\Install\Tools\Power Plan\highperformance.pow" 6215c520-3670-4349-89e2-186b0dca3999
+powercfg /setactive 6215c520-3670-4349-89e2-186b0dca3999
+
+## Start PCMark 10
 startpcmark10 -Server $Server -model $model -deffile $deffile -defname $defname -loop $loop -gettime $time
 
+## Get scores a second time, to compare current run VS all runs for same model
 update_scores -deffile $deffile -model $model -beforeorafter OtherRuns
 
 
