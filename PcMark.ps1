@@ -181,7 +181,7 @@ function update_scores {
     If ($beforeorafter -eq "ThisRun") { $script:thisrun = $hashtable }
     If ($beforeorafter -eq "OtherRuns") { $script:otherruns = $hashtable }
 }
-
+Clear-Variable -Name thisrun, otherruns, thisrunscore, otherrunsscore, Result -ErrorAction SilentlyContinue
 #endregion
 
 getinfo
