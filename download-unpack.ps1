@@ -11,31 +11,47 @@ if ($found) { $pcmarkversion = $matches.Values }
 
 # Set path for new PCMark zip/file if newer verison is found
 $Filepath = "\\it\Operations\GLOPAS\Install\Automation\InstallFiles\$pcmarkversion"
+$Filepath = "\\it\Operations\GLOPAS\Install\Automation\InstallFiles\PCMark10-v2-1-2557-pro.zip"
+
 If (!(Test-Path $Filepath)) {
+    Write-Host "New version of PCMark10 found"
+    Write-host "Press Y to make this script automatically download version $pcmarkversion, and use the new version instead."
+    Write-Host "Press N to skip for this run, and use the current downloaded version."
+}
+$answer = Read-Host "Yes, download or No, skip"
 
-$webClient = New-Object System.Net.WebClient
-$Webclient.DownloadFile($Uri, "$Filepath")
-
-$basename = $pcmarkversion -replace ".zip",""
-
-Write-host -ForegroundColor Green "Done downloading new PCMark10 to $Filepath"
-
-Expand-Archive $Filepath -DestinationPath \\it\Operations\GLOPAS\Install\Automation\InstallFiles\$basename
+while ("y.*|Y.*|n.*|N.*" -notmatch $answer) {
+    $answer = Read-Host "Yes, download or No, skip"
 }
 
 
-# Check if double folder exist, if two versions are found, delete oldest versions folder and its corresponding zip
-$Checkfordouble = Get-ChildItem \\it\Operations\GLOPAS\Install\Automation\InstallFiles -Directory
+If (!(Test-Path $Filepath) -and ($answer -match "y.*|Y.*")) {
 
-If ($Checkfordouble.count -gt 1) {
+    $webClient = New-Object System.Net.WebClient
+    $Webclient.DownloadFile($Uri, "$Filepath")
+
+    $basename = $pcmarkversion -replace ".zip", ""
+
+    Write-host -ForegroundColor Green "Done downloading new PCMark10 to $Filepath"
+
+    Expand-Archive $Filepath -DestinationPath \\it\Operations\GLOPAS\Install\Automation\InstallFiles\$basename
 
 
-$oldestversion = $Checkfordouble | Sort-Object lastwritetime | Select-Object -First 1
-Write-host "More than two versions found
+
+    # Check if double folder exist, if two versions are found, delete oldest versions folder and its corresponding zip
+    $Checkfordouble = Get-ChildItem \\it\Operations\GLOPAS\Install\Automation\InstallFiles -Directory
+
+    If ($Checkfordouble.count -gt 1) {
+
+
+        $oldestversion = $Checkfordouble | Sort-Object lastwritetime | Select-Object -First 1
+        Write-host "More than two versions found
 Deleting older version - $oldestversion"
 
 
-$version2delete = $oldestversion.FullName
-Remove-Item -Path $version2delete -Recurse -Force
-Remove-Item -Path $version2delete".zip" -Recurse -Force
+        $version2delete = $oldestversion.FullName
+        Remove-Item -Path $version2delete -Recurse -Force
+        Remove-Item -Path $version2delete".zip" -Recurse -Force
+    }
+
 }
