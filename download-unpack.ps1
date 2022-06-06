@@ -1,3 +1,4 @@
+#Test commit from Ramboll
 Clear-Host
 # URL that always point to latest Pcmark version
 $Uri = 'http://benchmarks.ul.com/downloads/pcmark10-professional.zip'
@@ -24,7 +25,6 @@ If (!(Test-Path $Filepath)) {
         $answer = Read-Host "Yes, download or No, skip"
     }
 }
-
 
 
 # Only proceed if there is a new version available, and user accepeted to download
