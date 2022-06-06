@@ -1,7 +1,3 @@
-#Test commit from Ramboll
-#Test commit from Home
-#Test commit from Ramboll2
-#test commit from home, with new "am i behind" enabled
 Clear-Host
 # URL that always point to latest Pcmark version
 $Uri = 'http://benchmarks.ul.com/downloads/pcmark10-professional.zip'
